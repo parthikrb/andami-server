@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             Int           @id @default(autoincrement())
+  email          String        @unique
+  imageUrl       String
+  authId         String        @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  firstname      String
+  lastname       String
+  designationId  Int?
+  departmentId   Int?
+  organizationId Int?
+  roleId         Int?
+  createdTeams   Team[]        @relation("TeamCreator")
+  teamUsers      TeamUser[]
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  department     Department?   @relation(fields: [departmentId], references: [id])
+  designation    Designation?  @relation(fields: [designationId], references: [id])
+  role           Role?         @relation(fields: [roleId], references: [id])
+}
+
+model Organization {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  premium      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        User[]
+  subscription Subscription?
+  teams        Team[]
+}
+
+model Team {
+  id             Int          @id @default(autoincrement())
+  name           String
+  description    String
+  inviteCode     String       @unique
+  organizationId Int
+  createdBy      Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  senses         Sense[]
+  createdUser    User         @relation("TeamCreator", fields: [createdBy], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  teamUsers      TeamUser[]
+}
+
+model Sense {
+  id                   Int        @id @default(autoincrement())
+  title                String
+  description          String? // Added for additional detail
+  teamId               Int
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  isRecurring          Boolean    @default(false)
+  interval             String? // 'daily', 'weekly', etc.
+  lastSent             DateTime?
+  nextSend             DateTime?
+  startDate            DateTime? // For recurring senses
+  endDate              DateTime? // For recurring senses
+  status               Status     @default(PENDING) // Enum for tracking status
+  priority             String? // Optional priority field
+  tags                 String[] // Array of tags for categorization
+  notificationSettings Json? // For custom notification settings
+  completedAt          DateTime? // Track when fully completed
+  team                 Team       @relation(fields: [teamId], references: [id])
+  steps                Step[]
+  auditLogs            AuditLog[] // To keep a history of changes or significant actions
+}
+
+model Step {
+  id        Int        @id @default(autoincrement())
+  title     String
+  order     Int // Order in the sequence of steps
+  senseId   Int
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
+  sense     Sense      @relation(fields: [senseId], references: [id])
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  title     String
+  stepId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  step      Step     @relation(fields: [stepId], references: [id])
+  options   String[] // If needed for multiple choice questions
+  type      String // 'text', 'multiple-choice', 'rating', etc.
+  required  Boolean  @default(false)
+  order     Int // Order in the sequence of questions
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  senseId     Int
+  action      String // 'created', 'updated', 'completed' etc.
+  performedBy Int // User ID of who performed the action
+  performedAt DateTime @default(now())
+  notes       String? // Any additional notes or comments on the action
+  sense       Sense    @relation(fields: [senseId], references: [id])
+}
+
+enum Status {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+model TeamUser {
+  userId    Int
+  teamId    Int
+  joinedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  roleId    Int
+  role      Role     @relation(fields: [roleId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@id([userId, teamId])
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  teamUsers   TeamUser[]
+  permissions Permission[] @relation("RolePermissions")
+  User        User[]
+}
+
+model Permission {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  roles     Role[]   @relation("RolePermissions")
+}
+
+model Subscription {
+  id             Int          @id @default(autoincrement())
+  status         String       @default("inactive")
+  startDate      DateTime
+  endDate        DateTime?
+  organizationId Int          @unique
+  stripeId       String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model Designation {
+  id        Int      @id @default(autoincrement())
+  title     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
