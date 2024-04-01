@@ -49,7 +49,9 @@ export class UsersService {
   }
 
   async findAllUsers(organizationId: number): Promise<User[]> {
-    Logger.log('Server::UsersService::findAllUsers', organizationId);
+    Logger.log(
+      `Server::UsersService::findAllUsers for Organization - ${organizationId}`,
+    );
     const allUsers = await this.prisma.user.findMany({
       where: { organizationId },
       include: {
@@ -89,14 +91,21 @@ export class UsersService {
   }
 
   async findOneUser(id: number): Promise<User | null> {
-    Logger.log('Server::UsersService::findOneUser', id);
+    Logger.log(`Server::UsersService::findOneUser - ${id}`);
     return this.fetchUserWithDetails({ id });
   }
 
-  async findOneByAuthId(authId: string): Promise<User | null> {
-    Logger.log('Server::UsersService::findOneByAuthId', authId);
-    return this.prisma.user.findFirst({
-      where: { authId },
+  async findOneByAuthId(id: string): Promise<User | null> {
+    Logger.log(`Server::UsersService::findOneByAuthId - ${id}`);
+    return this.prisma.user.findUnique({
+      where: { authId: id },
+    });
+  }
+
+  async findOneByEmail(email: string): Promise<User | null> {
+    Logger.log('Server::UsersService::findOneByEmail', email);
+    return this.prisma.user.findUnique({
+      where: { email },
     });
   }
 
@@ -109,7 +118,7 @@ export class UsersService {
   }
 
   async removeUser(id: number): Promise<User> {
-    Logger.log('Server::UsersService::removeUser', id);
+    Logger.log(`Server::UsersService::removeUser - ${id}`);
     return this.prisma.user.delete({
       where: { id },
     });
